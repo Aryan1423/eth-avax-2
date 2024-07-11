@@ -14,10 +14,6 @@ contract TodoList {
         taskCount++;
         tasks[taskCount] = Task(taskCount, description, false);}
 
-    function getTask(uint id) external view returns (uint, string memory, bool) {
-        require(id > 0 && id <= taskCount, "Task ID is out of range.");
-        Task memory task = tasks[id];
-        return (task.id, task.description, task.completed);}
 
     function completeTask(uint id) external {
         require(id > 0 && id <= taskCount, "Task ID is out of range.");
