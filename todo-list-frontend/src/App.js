@@ -1,18 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 import TodoList from './TodoList.json';
 
-const todoListAddress = '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9';
-
+const todoListAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; 
 function App() {
   const [tasks, setTasks] = useState([]);
   const [description, setDescription] = useState('');
-  const [taskId, setTaskId] = useState('');
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   const [contract, setContract] = useState(null);
   const [account, setAccount] = useState(null);
-  const [taskDetails, setTaskDetails] = useState(null);
 
   const loadProvider = async () => {
     if (window.ethereum) {
@@ -35,7 +32,7 @@ function App() {
     }
   };
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (contract) {
       try {
         const taskCount = await contract.taskCount();
@@ -49,12 +46,24 @@ function App() {
         console.error("Error fetching tasks:", error);
       }
     }
+  }, [contract]);
+
+  const getGasFees = async () => {
+    const feeData = await provider.getFeeData();
+    return {
+      maxFeePerGas: feeData.maxFeePerGas,
+      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
+    };
   };
 
   const addTask = async () => {
     if (contract && description) {
       try {
-        const tx = await contract.addTask(description);
+        const gasFees = await getGasFees();
+        const tx = await contract.addTask(description, {
+          maxFeePerGas: gasFees.maxFeePerGas,
+          maxPriorityFeePerGas: gasFees.maxPriorityFeePerGas,
+        });
         await tx.wait();
         setDescription('');
         fetchTasks();
@@ -64,21 +73,14 @@ function App() {
     }
   };
 
-  const getTask = async () => {
-    if (contract && taskId) {
-      try {
-        const task = await contract.getTask(taskId);
-        setTaskDetails(task);
-      } catch (error) {
-        console.error("Error getting task:", error);
-      }
-    }
-  };
-
   const completeTask = async (id) => {
     if (contract) {
       try {
-        const tx = await contract.completeTask(id);
+        const gasFees = await getGasFees();
+        const tx = await contract.completeTask(id, {
+          maxFeePerGas: gasFees.maxFeePerGas,
+          maxPriorityFeePerGas: gasFees.maxPriorityFeePerGas,
+        });
         await tx.wait();
         fetchTasks();
       } catch (error) {
@@ -90,9 +92,13 @@ function App() {
   const deleteTask = async (id) => {
     if (contract) {
       try {
-        const tx = await contract.deleteTask(id);
+        const gasFees = await getGasFees();
+        const tx = await contract.deleteTask(id, {
+          maxFeePerGas: gasFees.maxFeePerGas,
+          maxPriorityFeePerGas: gasFees.maxPriorityFeePerGas,
+        });
         await tx.wait();
-        fetchTasks();
+        fetchTasks(); 
       } catch (error) {
         console.error("Error deleting task:", error);
       }
@@ -107,7 +113,7 @@ function App() {
     if (contract) {
       fetchTasks();
     }
-  }, [contract]);
+  }, [contract, fetchTasks]);
 
   return (
     <div className="App">
@@ -128,25 +134,6 @@ function App() {
               placeholder="New task description"
             />
             <button onClick={addTask}>Add Task</button>
-          </div>
-
-          {/* Get Task Section */}
-          <div>
-            <h2>Get Task</h2>
-            <input
-              type="number"
-              value={taskId}
-              onChange={(e) => setTaskId(e.target.value)}
-              placeholder="Task ID"
-            />
-            <button onClick={getTask}>Get Task</button>
-            {taskDetails && (
-              <div>
-                <p>ID: {taskDetails[0].toString()}</p>
-                <p>Description: {taskDetails[1]}</p>
-                <p>Completed: {taskDetails[2] ? 'Yes' : 'No'}</p>
-              </div>
-            )}
           </div>
 
           {/* Tasks List */}
